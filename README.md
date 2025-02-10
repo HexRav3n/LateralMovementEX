@@ -1,3 +1,3 @@
 # LateralMovementEX
 
-A Lateral Movement Technique using .MSC files
+A Lateral Movement Technique using .MSC and .DLL files
